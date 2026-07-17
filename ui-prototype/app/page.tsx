@@ -7,6 +7,8 @@ type DocumentMode = "thermal" | "full";
 type WorkspaceFilter = "ALL" | "ONLINE" | "ATTENTION";
 type ConnectionState = "connecting" | "live" | "fallback";
 type SaleEntryUnit = "BAHT" | "LITER";
+type SaleDocumentType = "ABBREVIATED_TAX_INVOICE" | "FULL_TAX_INVOICE";
+type CustomerEntryMode = "SELECT" | "NEW";
 
 type Pump = {
   id: string;
@@ -76,6 +78,15 @@ type DocumentDetail = DocumentSummary & {
   print_history: Array<{ id: string; copyType: string; printedBy: string; printedAt: string }>;
 };
 
+type Customer = {
+  id: string;
+  legal_name_th: string;
+  tax_id: string;
+  branch_code: string;
+  branch_label: string;
+  address_th: string;
+};
+
 const initialPumps: Pump[] = [
   { id: "P01", name: "Dispenser 01", fuel: "Diesel B7", state: "FILLING", liters: "18.42", amount: "฿612.50", price: "฿33.25", totalizer: "428,912.44", salesToday: 34, volumeToday: 2050, operator: "สมชาย · กะเช้า", total: "฿36,840", className: "hotspot-p01" },
   { id: "P02", name: "Dispenser 02", fuel: "Gasohol 95", state: "ONLINE", liters: "—", amount: "—", price: "฿36.50", totalizer: "391,205.18", salesToday: 29, volumeToday: 1840, operator: "วราภรณ์ · กะเช้า", total: "฿29,120", className: "hotspot-p02" },
@@ -126,6 +137,15 @@ export default function Home() {
   const [saleEntryUnit, setSaleEntryUnit] = useState<SaleEntryUnit>("BAHT");
   const [saleUnitPrice, setSaleUnitPrice] = useState("50");
   const [salePaymentMethod, setSalePaymentMethod] = useState("CASH");
+  const [saleDocumentType, setSaleDocumentType] = useState<SaleDocumentType>("ABBREVIATED_TAX_INVOICE");
+  const [customerEntryMode, setCustomerEntryMode] = useState<CustomerEntryMode>("SELECT");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerLegalName, setCustomerLegalName] = useState("");
+  const [customerTaxId, setCustomerTaxId] = useState("");
+  const [customerBranchCode, setCustomerBranchCode] = useState("00000");
+  const [customerAddress, setCustomerAddress] = useState("");
   const [saleSubmitting, setSaleSubmitting] = useState(false);
   const [documentMode, setDocumentMode] = useState<DocumentMode>("thermal");
   const [documentSearch, setDocumentSearch] = useState("");
@@ -223,6 +243,23 @@ export default function Home() {
     };
   }, [documentOpen, documentSearch, documentMode]);
 
+  useEffect(() => {
+    if (!saleOpen || saleDocumentType !== "FULL_TAX_INVOICE" || customerEntryMode !== "SELECT" || !apiUrl) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/customers?search=${encodeURIComponent(customerSearch)}&limit=25`, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error(`customers_api_${response.status}`);
+        const data = await response.json() as { items: Customer[] };
+        setCustomers(data.items);
+        if (!data.items.some((customer) => customer.id === selectedCustomerId)) setSelectedCustomerId(data.items[0]?.id ?? "");
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") setNotice("CUSTOMER LOAD FAILED · RETRY REQUIRED");
+      }
+    }, 250);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [saleOpen, saleDocumentType, customerEntryMode, customerSearch, selectedCustomerId]);
+
   const selectPump = (id: string) => {
     setSelectedId(id);
     setDrawerOpen(true);
@@ -270,6 +307,18 @@ export default function Home() {
     }
     setSaleSubmitting(true);
     try {
+      let customerId = saleDocumentType === "FULL_TAX_INVOICE" && customerEntryMode === "SELECT" ? selectedCustomerId : undefined;
+      if (saleDocumentType === "FULL_TAX_INVOICE" && customerEntryMode === "NEW") {
+        const customerResponse = await fetch(`${apiUrl}/api/customers`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-user-id": "pos-ui-operator" },
+          body: JSON.stringify({ legalName: customerLegalName, taxId: customerTaxId, branchCode: customerBranchCode, address: customerAddress }),
+        });
+        const customerResult = await customerResponse.json() as { id?: string; customerId?: string; error?: string };
+        if (!customerResponse.ok && customerResponse.status !== 409) throw new Error(customerResult.error ?? `customer_api_${customerResponse.status}`);
+        customerId = customerResult.id ?? customerResult.customerId;
+      }
+      if (saleDocumentType === "FULL_TAX_INVOICE" && !customerId) throw new Error("customer_required_for_full_tax_invoice");
       const response = await fetch(`${apiUrl}/api/sales`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-user-id": "pos-ui-operator" },
@@ -278,7 +327,8 @@ export default function Home() {
           terminalCode: "POS-01",
           operatorName: "พนักงาน POS",
           dispenserCode: selected.id,
-          documentType: "ABBREVIATED_TAX_INVOICE",
+          documentType: saleDocumentType,
+          customerId,
           items: [{
             productCode: selected.fuel.toUpperCase().replaceAll(" ", "-"),
             description: selected.fuel,
@@ -295,7 +345,7 @@ export default function Home() {
       setSaleOpen(false);
       setDrawerOpen(false);
       setDocumentSearch(result.transactionNumber ?? "");
-      setDocumentMode("thermal");
+      setDocumentMode(saleDocumentType === "FULL_TAX_INVOICE" ? "full" : "thermal");
       setDocumentOpen(true);
       setNotice(`SALE COMPLETED · ${result.documentNumber}`);
     } catch (error) {
@@ -438,7 +488,17 @@ export default function Home() {
             <label className="sale-amount-field"><span>จำนวน</span><div><input type="number" min={saleEntryUnit === "BAHT" ? "0.01" : "0.001"} step={saleEntryUnit === "BAHT" ? "0.01" : "0.001"} value={saleQuantity} onChange={(event) => setSaleQuantity(event.target.value)} required /><select value={saleEntryUnit} onChange={(event) => { const nextUnit = event.target.value as SaleEntryUnit; const currentValue = Number(saleQuantity) || 0; const price = Number(saleUnitPrice) || 0; setSaleEntryUnit(nextUnit); setSaleQuantity(price > 0 ? (nextUnit === "BAHT" ? String(Math.round(currentValue * price * 100) / 100) : String(Math.round((currentValue / price) * 1000) / 1000)) : "0"); }} aria-label="หน่วยจำนวน"><option value="BAHT">บาท</option><option value="LITER">ลิตร</option></select></div></label>
             <label><span>ราคาต่อลิตร (บาท)</span><input type="number" min="0.0001" step="0.0001" value={saleUnitPrice} onChange={(event) => setSaleUnitPrice(event.target.value)} required /></label>
             <label><span>วิธีชำระเงิน</span><select value={salePaymentMethod} onChange={(event) => setSalePaymentMethod(event.target.value)}><option value="CASH">เงินสด</option><option value="CARD">บัตร</option><option value="QR">QR</option><option value="FLEET">Fleet</option><option value="CREDIT">เครดิต</option></select></label>
+            <label><span>ประเภทเอกสาร</span><select value={saleDocumentType} onChange={(event) => setSaleDocumentType(event.target.value as SaleDocumentType)}><option value="ABBREVIATED_TAX_INVOICE">ใบกำกับภาษีอย่างย่อ</option><option value="FULL_TAX_INVOICE">ใบกำกับภาษีเต็มรูป</option></select></label>
           </div>
+          {saleDocumentType === "FULL_TAX_INVOICE" && <div className="customer-panel">
+            <div className="customer-panel-head"><div><b>ข้อมูลลูกค้า</b><span>จำเป็นสำหรับใบกำกับภาษีเต็มรูป</span></div><div><button type="button" className={customerEntryMode === "SELECT" ? "active" : ""} onClick={() => setCustomerEntryMode("SELECT")}>เลือกจากฐานข้อมูล</button><button type="button" className={customerEntryMode === "NEW" ? "active" : ""} onClick={() => setCustomerEntryMode("NEW")}>เพิ่มลูกค้าใหม่</button></div></div>
+            {customerEntryMode === "SELECT" ? <div className="customer-select-fields"><input value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="ค้นหาชื่อหรือเลขผู้เสียภาษี" aria-label="ค้นหาลูกค้า" /><select value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)} required><option value="">เลือกลูกค้า</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.legal_name_th} · {customer.tax_id} · {customer.branch_label}</option>)}</select>{selectedCustomerId && <small>{customers.find((customer) => customer.id === selectedCustomerId)?.address_th}</small>}</div> : <div className="customer-new-fields">
+              <label><span>ชื่อบุคคล/นิติบุคคล</span><input value={customerLegalName} onChange={(event) => setCustomerLegalName(event.target.value)} maxLength={250} required /></label>
+              <label><span>เลขผู้เสียภาษี 13 หลัก</span><input value={customerTaxId} onChange={(event) => setCustomerTaxId(event.target.value.replace(/\D/g, "").slice(0, 13))} inputMode="numeric" pattern="[0-9]{13}" required /></label>
+              <label><span>รหัสสาขา 5 หลัก</span><input value={customerBranchCode} onChange={(event) => setCustomerBranchCode(event.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" pattern="[0-9]{5}" required /></label>
+              <label className="customer-address"><span>ที่อยู่</span><textarea value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} maxLength={1000} required /></label>
+            </div>}
+          </div>}
           <div className="sale-total"><span>ยอดชำระ</span><strong>{formatMoney(saleEntryUnit === "BAHT" ? (Number(saleQuantity) || 0) : (Number(saleQuantity) || 0) * (Number(saleUnitPrice) || 0), 2)}</strong></div>
           <p className="sale-safety">ระบบจะบันทึกการขาย การชำระเงิน เลขเอกสาร และ Audit Log พร้อมกัน หากขั้นตอนใดล้มเหลวจะไม่บันทึกทั้งรายการ</p>
           <div className="sale-actions"><button type="button" onClick={() => setSaleOpen(false)}>ยกเลิก</button><button type="submit" disabled={saleSubmitting || connectionState !== "live"}>{saleSubmitting ? "กำลังบันทึก…" : "บันทึกและออกใบเสร็จ"}</button></div>

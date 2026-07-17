@@ -212,6 +212,80 @@ async function createPrintJob(request, response, documentId) {
   }
 }
 
+async function listCustomers(response, url) {
+  const search = url.searchParams.get("search")?.trim() ?? "";
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 25) || 25, 1), 100);
+  const result = await pool.query(
+    `select id, customer_type, legal_name_th, tax_id, branch_code, branch_label,
+            address_th, vehicle_registration, vehicle_province
+       from customers
+      where ($1 = '' or legal_name_th ilike '%' || $1 || '%' or coalesce(tax_id, '') ilike '%' || $1 || '%')
+      order by legal_name_th
+      limit $2`,
+    [search, limit],
+  );
+  send(response, 200, { items: result.rows });
+}
+
+async function createCustomer(request, response) {
+  const actor = requiredText(request.headers["x-user-id"], "x-user-id", 200);
+  const body = await readJson(request);
+  const customerType = ["PERSON", "COMPANY", "GOVERNMENT"].includes(body.customerType) ? body.customerType : "COMPANY";
+  const legalName = requiredText(body.legalName, "legalName", 250);
+  const taxId = requiredText(body.taxId, "taxId", 13);
+  if (!/^\d{13}$/.test(taxId)) {
+    const error = new Error("taxId must contain exactly 13 digits");
+    error.statusCode = 422; error.code = "validation_error"; error.field = "taxId"; throw error;
+  }
+  const branchCode = body.branchCode ? requiredText(body.branchCode, "branchCode", 5) : "00000";
+  if (!/^\d{5}$/.test(branchCode)) {
+    const error = new Error("branchCode must contain exactly 5 digits");
+    error.statusCode = 422; error.code = "validation_error"; error.field = "branchCode"; throw error;
+  }
+  const branchLabel = body.branchLabel ? requiredText(body.branchLabel, "branchLabel", 100) : (branchCode === "00000" ? "สำนักงานใหญ่" : "สาขา");
+  const address = requiredText(body.address, "address", 1000);
+  const customerId = randomUUID();
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const duplicate = await client.query(
+      "select id from customers where tax_id = $1 and coalesce(branch_code, '00000') = $2 limit 1",
+      [taxId, branchCode],
+    );
+    if (duplicate.rowCount) {
+      await client.query("rollback");
+      return send(response, 409, { error: "customer_already_exists", customerId: duplicate.rows[0].id });
+    }
+    const result = await client.query(
+      `insert into customers (id, customer_type, legal_name_th, tax_id, branch_code, branch_label, address_th, vehicle_registration, vehicle_province)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       returning id, customer_type, legal_name_th, tax_id, branch_code, branch_label, address_th, vehicle_registration, vehicle_province`,
+      [customerId, customerType, legalName, taxId, branchCode, branchLabel, address,
+        body.vehicleRegistration ? requiredText(body.vehicleRegistration, "vehicleRegistration", 30) : null,
+        body.vehicleProvince ? requiredText(body.vehicleProvince, "vehicleProvince", 100) : null],
+    );
+    await client.query(
+      `insert into audit_logs (actor, action, entity_type, entity_id, after_data)
+       values ($1,'CUSTOMER_CREATED','CUSTOMER',$2,$3)`,
+      [actor, customerId, JSON.stringify({ legalName, taxId, branchCode })],
+    );
+    await client.query("commit");
+    send(response, 201, result.rows[0]);
+  } catch (error) {
+    await client.query("rollback");
+    if (error.code === "23505") {
+      const existing = await client.query(
+        "select id from customers where tax_id = $1 and coalesce(branch_code, '00000') = $2 limit 1",
+        [taxId, branchCode],
+      );
+      return send(response, 409, { error: "customer_already_exists", customerId: existing.rows[0]?.id });
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function createSale(request, response) {
   const actor = requiredText(request.headers["x-user-id"], "x-user-id", 200);
   const body = await readJson(request);
@@ -491,6 +565,8 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/health") return await health(response);
     if (request.method === "GET" && url.pathname === "/api/documents/sample") return await sampleDocument(response, url);
     if (request.method === "GET" && url.pathname === "/api/documents") return await listDocuments(response, url);
+    if (request.method === "GET" && url.pathname === "/api/customers") return await listCustomers(response, url);
+    if (request.method === "POST" && url.pathname === "/api/customers") return await createCustomer(request, response);
     if (request.method === "POST" && url.pathname === "/api/sales") return await createSale(request, response);
     if (request.method === "GET" && documentPath) return await documentDetails(response, documentPath[1]);
     if (request.method === "POST" && printPath) return await createPrintJob(request, response, printPath[1]);

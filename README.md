@@ -58,6 +58,8 @@ Station API เขียน log เป็น JSON หนึ่งรายกา
 API หลักสำหรับ POS MVP:
 
 - `POST /api/sales` — บันทึกการขาย การชำระเงิน ออกเลขเอกสาร และ audit log ใน transaction เดียว
+- `GET /api/customers?search=...` — ค้นหาลูกค้าจากชื่อหรือเลขประจำตัวผู้เสียภาษี
+- `POST /api/customers` — เพิ่มลูกค้าใหม่พร้อมตรวจเลขผู้เสียภาษี/สาขาและ audit log
 - `GET /api/documents?search=...` — ค้นหาจากเลขเอกสารหรือเลขธุรกรรม
 - `GET /api/documents/{id}` — อ่านเอกสาร รายการสินค้า การชำระ และประวัติพิมพ์
 - `POST /api/documents/{id}/prints` — บันทึกงานพิมพ์ต้นฉบับ/สำเนาและ audit log

@@ -42,6 +42,8 @@ test("keeps API polling and safe demo fallback available", async () => {
   assert.match(page, /API OFFLINE · USING SAFE DEMO DATA/);
   assert.match(page, /\/api\/documents\?search=/);
   assert.match(page, /\/api\/sales/);
+  assert.match(page, /useState<SaleEntryUnit>\("BAHT"\)/);
+  assert.match(page, /<option value="BAHT">บาท<\/option><option value="LITER">ลิตร<\/option>/);
   assert.match(page, /\/api\/documents\/\$\{selectedDocument\.id\}\/prints/);
   assert.match(page, /<ThermalReceipt copyLabel="สำเนา" document=\{selectedDocument\} \/>/);
   assert.match(page, /<FullTaxInvoice copyLabel="สำเนา" document=\{selectedDocument\} \/>/);

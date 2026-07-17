@@ -231,13 +231,21 @@ async function createSale(request, response) {
   const items = body.items.map((item, index) => {
     const quantity = positiveNumber(item.quantity, `items[${index}].quantity`, 3);
     const unitPrice = positiveNumber(item.unitPrice, `items[${index}].unitPrice`, 4);
+    const calculatedTotal = roundMoney(quantity * unitPrice);
+    const lineTotal = item.lineTotal === undefined
+      ? calculatedTotal
+      : positiveNumber(item.lineTotal, `items[${index}].lineTotal`);
+    if (Math.abs(lineTotal - calculatedTotal) > 0.05) {
+      const error = new Error(`items[${index}].lineTotal differs from quantity multiplied by unit price`);
+      error.statusCode = 422; error.code = "line_total_mismatch"; error.field = `items[${index}].lineTotal`; throw error;
+    }
     return {
       productCode: requiredText(item.productCode, `items[${index}].productCode`, 50),
       description: requiredText(item.description, `items[${index}].description`, 250),
       quantity,
       unit: requiredText(item.unit ?? "L", `items[${index}].unit`, 20),
       unitPrice,
-      lineTotal: roundMoney(quantity * unitPrice),
+      lineTotal,
     };
   });
   const allowedPaymentMethods = new Set(["CASH", "CARD", "QR", "FLEET", "CREDIT"]);

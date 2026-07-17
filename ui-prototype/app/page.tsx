@@ -6,6 +6,7 @@ type PumpState = "ONLINE" | "FILLING" | "PAYMENT" | "FAULT";
 type DocumentMode = "thermal" | "full";
 type WorkspaceFilter = "ALL" | "ONLINE" | "ATTENTION";
 type ConnectionState = "connecting" | "live" | "fallback";
+type SaleEntryUnit = "BAHT" | "LITER";
 
 type Pump = {
   id: string;
@@ -121,7 +122,8 @@ export default function Home() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
-  const [saleQuantity, setSaleQuantity] = useState("20");
+  const [saleQuantity, setSaleQuantity] = useState("1000");
+  const [saleEntryUnit, setSaleEntryUnit] = useState<SaleEntryUnit>("BAHT");
   const [saleUnitPrice, setSaleUnitPrice] = useState("50");
   const [salePaymentMethod, setSalePaymentMethod] = useState("CASH");
   const [saleSubmitting, setSaleSubmitting] = useState(false);
@@ -254,10 +256,15 @@ export default function Home() {
   const submitSale = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!apiUrl || saleSubmitting) return;
-    const quantity = Number(saleQuantity);
+    const enteredValue = Number(saleQuantity);
     const unitPrice = Number(saleUnitPrice);
-    const amount = Math.round((quantity * unitPrice + Number.EPSILON) * 100) / 100;
-    if (!Number.isFinite(amount) || amount <= 0) {
+    const amount = saleEntryUnit === "BAHT"
+      ? Math.round((enteredValue + Number.EPSILON) * 100) / 100
+      : Math.round((enteredValue * unitPrice + Number.EPSILON) * 100) / 100;
+    const quantity = saleEntryUnit === "BAHT"
+      ? Math.round((enteredValue / unitPrice + Number.EPSILON) * 1000) / 1000
+      : enteredValue;
+    if (!Number.isFinite(amount) || !Number.isFinite(quantity) || amount <= 0 || quantity <= 0 || unitPrice <= 0) {
       setNotice("SALE VALIDATION FAILED · CHECK QUANTITY AND PRICE");
       return;
     }
@@ -278,6 +285,7 @@ export default function Home() {
             quantity,
             unit: "L",
             unitPrice,
+            ...(saleEntryUnit === "BAHT" ? { lineTotal: amount } : {}),
           }],
           payments: [{ method: salePaymentMethod, amount }],
         }),
@@ -427,11 +435,11 @@ export default function Home() {
         <form className="sale-dialog" onSubmit={(event) => void submitSale(event)}>
           <div className="sale-dialog-head"><div><span>POS-01 / {selected.id}</span><h2>บันทึกการขายน้ำมัน</h2><p>{selected.fuel} · VAT คำนวณจากอัตราที่มีผลในฐานข้อมูล</p></div><button type="button" onClick={() => setSaleOpen(false)} aria-label="ปิดหน้าบันทึกขาย">×</button></div>
           <div className="sale-fields">
-            <label><span>จำนวน (ลิตร)</span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={(event) => setSaleQuantity(event.target.value)} required /></label>
+            <label className="sale-amount-field"><span>จำนวน</span><div><input type="number" min={saleEntryUnit === "BAHT" ? "0.01" : "0.001"} step={saleEntryUnit === "BAHT" ? "0.01" : "0.001"} value={saleQuantity} onChange={(event) => setSaleQuantity(event.target.value)} required /><select value={saleEntryUnit} onChange={(event) => { const nextUnit = event.target.value as SaleEntryUnit; const currentValue = Number(saleQuantity) || 0; const price = Number(saleUnitPrice) || 0; setSaleEntryUnit(nextUnit); setSaleQuantity(price > 0 ? (nextUnit === "BAHT" ? String(Math.round(currentValue * price * 100) / 100) : String(Math.round((currentValue / price) * 1000) / 1000)) : "0"); }} aria-label="หน่วยจำนวน"><option value="BAHT">บาท</option><option value="LITER">ลิตร</option></select></div></label>
             <label><span>ราคาต่อลิตร (บาท)</span><input type="number" min="0.0001" step="0.0001" value={saleUnitPrice} onChange={(event) => setSaleUnitPrice(event.target.value)} required /></label>
             <label><span>วิธีชำระเงิน</span><select value={salePaymentMethod} onChange={(event) => setSalePaymentMethod(event.target.value)}><option value="CASH">เงินสด</option><option value="CARD">บัตร</option><option value="QR">QR</option><option value="FLEET">Fleet</option><option value="CREDIT">เครดิต</option></select></label>
           </div>
-          <div className="sale-total"><span>ยอดชำระ</span><strong>{formatMoney((Number(saleQuantity) || 0) * (Number(saleUnitPrice) || 0), 2)}</strong></div>
+          <div className="sale-total"><span>ยอดชำระ</span><strong>{formatMoney(saleEntryUnit === "BAHT" ? (Number(saleQuantity) || 0) : (Number(saleQuantity) || 0) * (Number(saleUnitPrice) || 0), 2)}</strong></div>
           <p className="sale-safety">ระบบจะบันทึกการขาย การชำระเงิน เลขเอกสาร และ Audit Log พร้อมกัน หากขั้นตอนใดล้มเหลวจะไม่บันทึกทั้งรายการ</p>
           <div className="sale-actions"><button type="button" onClick={() => setSaleOpen(false)}>ยกเลิก</button><button type="submit" disabled={saleSubmitting || connectionState !== "live"}>{saleSubmitting ? "กำลังบันทึก…" : "บันทึกและออกใบเสร็จ"}</button></div>
         </form>

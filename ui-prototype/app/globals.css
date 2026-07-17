@@ -185,3 +185,4 @@ button { font:inherit; color:inherit; }
   .automatic-copy{display:block!important;break-before:page;page-break-before:always}
   .automatic-copy .printable-document{break-before:page;page-break-before:always}
 }
+.sale-amount-field>div{display:grid;grid-template-columns:1fr 92px}.sale-amount-field>div input{border-radius:8px 0 0 8px}.sale-amount-field>div select{border-left:0;border-radius:0 8px 8px 0;color:#d9ff9d}

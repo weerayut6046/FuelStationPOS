@@ -22,7 +22,7 @@ const sale = await json("/api/sales", {
     operatorName: "CI Operator",
     dispenserCode: "P01",
     documentType: "ABBREVIATED_TAX_INVOICE",
-    items: [{ productCode: "DIESEL-B7", description: "HIDIESEL B7", quantity: 20, unit: "L", unitPrice: 50 }],
+    items: [{ productCode: "DIESEL-B7", description: "HIDIESEL B7", quantity: 26.667, unit: "L", unitPrice: 37.5, lineTotal: 1000 }],
     payments: [{ method: "CASH", amount: 1000 }],
   }),
 });

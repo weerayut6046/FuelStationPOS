@@ -46,9 +46,14 @@ npm test
 ตรวจ syntax ของ API และ Docker configuration:
 
 ```powershell
-node --check services/api/server.mjs
+Set-Location services/api
+npm ci
+npm test
+Set-Location ../..
 docker compose config --quiet
 ```
+
+Station API เขียน log เป็น JSON หนึ่งรายการต่อบรรทัด โดยมี request ID, path, status code และระยะเวลาตอบกลับ กำหนดระดับ log ผ่าน `LOG_LEVEL` (`debug`, `info`, `warn`, `error`) ได้
 
 GitHub Actions จะรันการตรวจทั้งหมดนี้อัตโนมัติเมื่อ push หรือเปิด pull request ไปยัง branch `main`
 

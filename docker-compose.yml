@@ -28,6 +28,7 @@ services:
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-fuelops}:${POSTGRES_PASSWORD:-fuelops_dev_change_me}@database:5432/${POSTGRES_DB:-fuelstation}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       TZ: Asia/Bangkok
     ports:
       - "${API_PORT:-3001}:3001"

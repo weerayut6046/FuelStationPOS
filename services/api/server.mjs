@@ -1,16 +1,24 @@
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
+import { createLogger, serializeError } from "./logger.mjs";
 
 const { Pool } = pg;
 const port = Number(process.env.PORT ?? 3001);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const logger = createLogger();
+
+function requestIdFrom(request) {
+  const candidate = request.headers["x-request-id"];
+  return typeof candidate === "string" && /^[A-Za-z0-9._-]{1,128}$/.test(candidate) ? candidate : randomUUID();
+}
 
 function send(response, status, payload) {
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,x-user-id",
+    "access-control-allow-headers": "content-type,x-user-id,x-request-id",
     "cache-control": "no-store",
   });
   response.end(JSON.stringify(payload));
@@ -157,13 +165,27 @@ async function listOperationalEvents(response, url) {
 }
 
 const server = createServer(async (request, response) => {
+  const startedAt = process.hrtime.bigint();
+  const requestId = requestIdFrom(request);
+  const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+  response.setHeader("x-request-id", requestId);
+  response.once("finish", () => {
+    logger.info("request_completed", {
+      requestId,
+      method: request.method,
+      path: requestUrl.pathname,
+      statusCode: response.statusCode,
+      durationMs: Number(process.hrtime.bigint() - startedAt) / 1e6,
+    });
+  });
+
   if (request.method === "OPTIONS") {
     send(response, 204, {});
     return;
   }
 
   try {
-    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+    const url = requestUrl;
     if (request.method === "GET" && url.pathname === "/health") return await health(response);
     if (request.method === "GET" && url.pathname === "/api/documents/sample") return await sampleDocument(response, url);
     if (request.method === "GET" && url.pathname === "/api/documents") return await listDocuments(response);
@@ -171,17 +193,25 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/operations/events") return await listOperationalEvents(response, url);
     send(response, 404, { error: "not_found" });
   } catch (error) {
-    console.error(error);
-    send(response, 500, { error: "internal_error" });
+    logger.error("request_failed", {
+      requestId,
+      method: request.method,
+      path: requestUrl.pathname,
+      error: serializeError(error),
+    });
+    if (!response.headersSent) send(response, 500, { error: "internal_error", requestId });
+    else response.destroy();
   }
 });
 
 async function shutdown() {
+  logger.info("service_stopping", { signal: "shutdown" });
   server.close();
   await pool.end();
   process.exit(0);
 }
 
+pool.on("error", (error) => logger.error("database_pool_error", { error: serializeError(error) }));
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
-server.listen(port, "0.0.0.0", () => console.log(`Fuel Ops API listening on ${port}`));
+server.listen(port, "0.0.0.0", () => logger.info("service_started", { port }));

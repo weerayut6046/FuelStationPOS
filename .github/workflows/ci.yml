@@ -38,9 +38,9 @@ jobs:
         working-directory: services/api
         run: npm ci
 
-      - name: Check API syntax
+      - name: Test API
         working-directory: services/api
-        run: node --check server.mjs
+        run: npm test
 
       - name: Install UI dependencies
         working-directory: ui-prototype

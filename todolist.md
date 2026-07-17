@@ -82,7 +82,7 @@
 - [ ] สร้าง Authentication, Role/Permission และ Audit Log
 - [-] ตั้งค่า Station API, Central API, Sync Worker และ Docker Compose — Station API และ Docker Compose พร้อมใช้งาน; รอ Central API/Sync Worker
 - [-] กำหนด PostgreSQL 16 Persistent Volume, Health Check, Backup และ Restore Test — Volume/Health Check พร้อม; รอ Backup/Restore Test
-- [-] ตั้งค่า Logging, Health Check, Error Handling และ CI — API Health Check/Error Handling และ GitHub Actions CI พร้อม; รอ Logging
+- [x] ตั้งค่า Logging, Health Check, Error Handling และ CI
 - [ ] สร้าง Device Simulator สำหรับ 4 ตู้/8 หัว
 - [ ] จัดทำ Architecture Decision Record (ADR) ที่จำเป็น
 

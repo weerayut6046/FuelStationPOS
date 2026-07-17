@@ -25,6 +25,7 @@ test("server-renders the Fuel Ops command center", async () => {
   assert.match(html, /3D COMMAND/);
   assert.match(html, /2D WORKSPACE/);
   assert.match(html, /DOCUMENTS/);
+  assert.match(html, /บันทึกการขายน้ำมัน/);
   assert.match(html, /Dispenser 01/);
   assert.match(html, /ใบเสร็จรับเงิน\/ใบกำกับภาษีอย่างย่อ/);
 });
@@ -39,7 +40,10 @@ test("keeps API polling and safe demo fallback available", async () => {
   assert.match(page, /setConnectionState\("live"\)/);
   assert.match(page, /setConnectionState\("fallback"\)/);
   assert.match(page, /API OFFLINE · USING SAFE DEMO DATA/);
-  assert.match(page, /<ThermalReceipt copyLabel="สำเนา" \/>/);
-  assert.match(page, /<FullTaxInvoice copyLabel="สำเนา" \/>/);
+  assert.match(page, /\/api\/documents\?search=/);
+  assert.match(page, /\/api\/sales/);
+  assert.match(page, /\/api\/documents\/\$\{selectedDocument\.id\}\/prints/);
+  assert.match(page, /<ThermalReceipt copyLabel="สำเนา" document=\{selectedDocument\} \/>/);
+  assert.match(page, /<FullTaxInvoice copyLabel="สำเนา" document=\{selectedDocument\} \/>/);
   assert.doesNotMatch(page, /เอกสารฉบับนี้สร้างจากระบบคอมพิวเตอร์/);
 });

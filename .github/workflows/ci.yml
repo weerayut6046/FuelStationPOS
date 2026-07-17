@@ -34,6 +34,9 @@ jobs:
       - name: Validate Docker Compose
         run: docker compose config --quiet
 
+      - name: Build service images
+        run: docker compose build
+
       - name: Install API dependencies
         working-directory: services/api
         run: npm ci
@@ -53,3 +56,23 @@ jobs:
       - name: Build and test UI
         working-directory: ui-prototype
         run: npm test
+
+      - name: Start Docker stack
+        run: docker compose up -d --wait
+
+      - name: Run Docker smoke test
+        run: node scripts/docker-smoke.mjs
+
+      - name: Test database backup and restore
+        shell: pwsh
+        run: |
+          $backupFile = ./scripts/backup.ps1
+          ./scripts/restore-test.ps1 -BackupFile $backupFile
+
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Stop Docker stack
+        if: always()
+        run: docker compose down --volumes

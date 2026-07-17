@@ -55,7 +55,25 @@ docker compose config --quiet
 
 Station API เขียน log เป็น JSON หนึ่งรายการต่อบรรทัด โดยมี request ID, path, status code และระยะเวลาตอบกลับ กำหนดระดับ log ผ่าน `LOG_LEVEL` (`debug`, `info`, `warn`, `error`) ได้
 
+API หลักสำหรับ POS MVP:
+
+- `POST /api/sales` — บันทึกการขาย การชำระเงิน ออกเลขเอกสาร และ audit log ใน transaction เดียว
+- `GET /api/documents?search=...` — ค้นหาจากเลขเอกสารหรือเลขธุรกรรม
+- `GET /api/documents/{id}` — อ่านเอกสาร รายการสินค้า การชำระ และประวัติพิมพ์
+- `POST /api/documents/{id}/prints` — บันทึกงานพิมพ์ต้นฉบับ/สำเนาและ audit log
+
 GitHub Actions จะรันการตรวจทั้งหมดนี้อัตโนมัติเมื่อ push หรือเปิด pull request ไปยัง branch `main`
+
+## สำรองและทดสอบกู้คืนฐานข้อมูล
+
+เมื่อ Database container ทำงานอยู่ ให้สร้างไฟล์สำรองและทดสอบกู้คืนลงฐานข้อมูลชั่วคราวด้วย:
+
+```powershell
+$backupFile = ./scripts/backup.ps1
+./scripts/restore-test.ps1 -BackupFile $backupFile
+```
+
+ไฟล์สำรองจะอยู่ใน `outputs/backups/` ซึ่งถูก Git ignore ส่วน restore test จะสร้างและลบเฉพาะฐานข้อมูล `fuelstation_restore_test` โดยไม่แก้ไขฐานข้อมูลหลัก
 
 ## สถานะโครงการ
 

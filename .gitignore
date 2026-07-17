@@ -4,5 +4,4 @@ dist/
 .next/
 .wrangler/
 *.log
-outputs/*.tar.gz
-
+outputs/

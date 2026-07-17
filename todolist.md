@@ -78,10 +78,10 @@
 - [x] ตั้งค่า Solution/Repository และโครงสร้าง Source Code ตามแผน
 - [x] สร้าง Database Schema, Migration, Seed Data และ Master Data ของสถานี
 - [x] สร้างตาราง Sales, SaleItems, Payments, TaxRates, DocumentSequences, TaxDocuments, PrintJobs และ AuditLogs
-- [ ] ทำ Seller/Buyer Snapshot และเลขเอกสารแบบ Transaction-safe ไม่ซ้ำข้าม POS
+- [x] ทำ Seller/Buyer Snapshot และเลขเอกสารแบบ Transaction-safe ไม่ซ้ำข้าม POS
 - [ ] สร้าง Authentication, Role/Permission และ Audit Log
 - [-] ตั้งค่า Station API, Central API, Sync Worker และ Docker Compose — Station API และ Docker Compose พร้อมใช้งาน; รอ Central API/Sync Worker
-- [-] กำหนด PostgreSQL 16 Persistent Volume, Health Check, Backup และ Restore Test — Volume/Health Check พร้อม; รอ Backup/Restore Test
+- [x] กำหนด PostgreSQL 16 Persistent Volume, Health Check, Backup และ Restore Test
 - [x] ตั้งค่า Logging, Health Check, Error Handling และ CI
 - [ ] สร้าง Device Simulator สำหรับ 4 ตู้/8 หัว
 - [ ] จัดทำ Architecture Decision Record (ADR) ที่จำเป็น
@@ -90,7 +90,7 @@
 
 - [x] นักพัฒนาสามารถเปิดระบบทั้งชุดด้วยขั้นตอนมาตรฐาน
 - [ ] Login และการแบ่งสิทธิ์ทำงานได้
-- [ ] Migration และ Backup ขั้นต้นทำงานได้
+- [x] Migration และ Backup ขั้นต้นทำงานได้
 - [ ] Device Simulator ทำงานได้ครบ 4 ตู้/8 หัว
 
 ## Phase 3 — POS และเอกสารขาย MVP (3–4 สัปดาห์)
@@ -98,14 +98,14 @@
 ### งานหลัก
 
 - [ ] พัฒนาการเปิดกะ ปิดกะ และจัดการเงินสด
-- [ ] แสดงสถานะหัวจ่าย รับรายการ และสร้างการขาย
+- [x] แสดงสถานะหัวจ่าย รับรายการ และสร้างการขาย
 - [ ] รองรับขายสินค้า บาร์โค้ด และส่วนลดตามสิทธิ์
-- [ ] รองรับช่องทางชำระเงินที่ได้รับอนุมัติ
+- [x] รองรับการบันทึกชำระเงิน CASH, CARD, QR, FLEET และ CREDIT แบบตรวจยอดตรงกับการขาย — รอยืนยันว่าช่องทางใดเปิดใช้จริง
 - [-] สร้างใบเสร็จ/ใบกำกับภาษีอย่างย่อสำหรับ Thermal 80 มม. — Prototype และ Print CSS พร้อม; รออนุมัติแบบ/ทดสอบเครื่องจริง
 - [-] สร้างใบเสร็จ/ใบกำกับภาษีเต็มรูป — Prototype A4 และ Print CSS พร้อม; รออนุมัติแบบ/ทดสอบเครื่องจริง
 - [x] รองรับข้อความต้นฉบับ/สำเนาอัตโนมัติ เลขสาขา วิธีชำระ ทะเบียนรถ และจำนวนเงินตัวอักษร
-- [ ] ใช้อัตราภาษีจาก TaxRates ตามวันที่มีผล ห้าม Hard-code VAT ใน Production
-- [-] รองรับค้นหาเอกสาร พิมพ์ซ้ำ และบันทึกประวัติการพิมพ์ — พิมพ์ต้นฉบับพร้อมสำเนาอัตโนมัติแล้ว; รอค้นหา/ประวัติการพิมพ์จริง
+- [x] ใช้อัตราภาษีจาก TaxRates ตามวันที่มีผล ห้าม Hard-code VAT ใน Production
+- [x] รองรับค้นหาเอกสาร พิมพ์ซ้ำ และบันทึกประวัติการพิมพ์
 - [ ] ทดสอบ Layout กับเครื่องพิมพ์ 80 มม. และเครื่องพิมพ์ใบกำกับภาษีจริง
 - [ ] พัฒนาการยกเลิก/คืนรายการด้วย Approval Flow
 - [ ] สร้าง Printer Service และ Hardware Abstraction
@@ -373,7 +373,7 @@
 - [x] Database Schema, Migration และ Seed Data
 - [ ] TMJ Simulator และ Driver ที่ผ่านการทดสอบ
 - [ ] แบบใบเสร็จ/ใบกำกับภาษีที่อนุมัติ
-- [-] ชุด Automated Tests และผล UAT/SAT — Build/Rendered HTML/API Fallback tests ผ่าน; รอ UAT/SAT
+- [-] ชุด Automated Tests และผล UAT/SAT — Unit/Build/Rendered HTML/Docker end-to-end smoke tests ผ่าน; รอ UAT/SAT
 - [ ] คู่มือติดตั้ง สำรอง กู้คืน อัปเดต และแก้เหตุขัดข้อง
 - [ ] คู่มือพนักงานขาย หัวหน้ากะ ผู้จัดการ และผู้ดูแลระบบ
 - [ ] รายการบัญชีผู้ใช้/สิทธิ์เริ่มต้นและ Checklist เปิดใช้งานจริง

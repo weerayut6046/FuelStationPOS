@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            services/api/package-lock.json
+            ui-prototype/package-lock.json
+
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Install API dependencies
+        working-directory: services/api
+        run: npm ci
+
+      - name: Check API syntax
+        working-directory: services/api
+        run: node --check server.mjs
+
+      - name: Install UI dependencies
+        working-directory: ui-prototype
+        run: npm ci
+
+      - name: Lint UI
+        working-directory: ui-prototype
+        run: npm run lint
+
+      - name: Build and test UI
+        working-directory: ui-prototype
+        run: npm test

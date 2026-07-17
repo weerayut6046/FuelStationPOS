@@ -378,7 +378,19 @@ async function createSale(request, response) {
       }
       const customer = customerResult.rows[0];
       customerId = customer.id;
-      buyerSnapshot = { legalName: customer.legal_name_th, taxId: customer.tax_id, branchCode: customer.branch_code, branchLabel: customer.branch_label, address: customer.address_th };
+      buyerSnapshot = {
+        legalName: customer.legal_name_th,
+        taxId: customer.tax_id,
+        branchCode: customer.branch_code,
+        branchLabel: customer.branch_label,
+        address: customer.address_th,
+        vehicleRegistration: body.vehicleRegistration
+          ? requiredText(body.vehicleRegistration, "vehicleRegistration", 30)
+          : customer.vehicle_registration,
+        vehicleProvince: body.vehicleProvince
+          ? requiredText(body.vehicleProvince, "vehicleProvince", 100)
+          : customer.vehicle_province,
+      };
     }
     if (documentType === "FULL_TAX_INVOICE" && !buyerSnapshot) {
       await client.query("rollback");

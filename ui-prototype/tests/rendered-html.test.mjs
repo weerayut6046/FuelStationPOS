@@ -46,6 +46,8 @@ test("keeps API polling and safe demo fallback available", async () => {
   assert.match(page, /\/api\/customers/);
   assert.match(page, /เลือกจากฐานข้อมูล/);
   assert.match(page, /เพิ่มลูกค้าใหม่/);
+  assert.match(page, /ทะเบียนรถ/);
+  assert.match(page, /saleVehicleRegistration/);
   assert.match(page, /useState<SaleEntryUnit>\("BAHT"\)/);
   assert.match(page, /<option value="BAHT">บาท<\/option><option value="LITER">ลิตร<\/option>/);
   assert.match(page, /\/api\/documents\/\$\{selectedDocument\.id\}\/prints/);

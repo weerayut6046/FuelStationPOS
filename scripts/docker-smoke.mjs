@@ -57,6 +57,8 @@ const customer = await json("/api/customers", {
     taxId,
     branchCode: "00000",
     address: "99 ถนนทดสอบ เขตทดสอบ กรุงเทพมหานคร 10000",
+    vehicleRegistration: "กก 1",
+    vehicleProvince: "เชียงใหม่",
   }),
 });
 assert.equal(customer.tax_id, taxId);
@@ -73,6 +75,8 @@ const fullInvoiceSale = await json("/api/sales", {
     dispenserCode: "P02",
     documentType: "FULL_TAX_INVOICE",
     customerId: customer.id,
+    vehicleRegistration: "3ขธ 1955",
+    vehicleProvince: "กรุงเทพมหานคร",
     items: [{ productCode: "GASOHOL-95", description: "Gasohol 95", quantity: 10, unit: "L", unitPrice: 50 }],
     payments: [{ method: "QR", amount: 500 }],
   }),
@@ -81,6 +85,8 @@ const fullInvoice = await json(`/api/documents/${fullInvoiceSale.documentId}`);
 assert.equal(fullInvoice.document_type, "FULL_TAX_INVOICE");
 assert.equal(fullInvoice.buyer_snapshot.taxId, taxId);
 assert.equal(fullInvoice.buyer_snapshot.legalName, "บริษัท ทดสอบระบบ จำกัด");
+assert.equal(fullInvoice.buyer_snapshot.vehicleRegistration, "3ขธ 1955");
+assert.equal(fullInvoice.buyer_snapshot.vehicleProvince, "กรุงเทพมหานคร");
 
 const webResponse = await fetch(webUrl);
 assert.equal(webResponse.status, 200);
